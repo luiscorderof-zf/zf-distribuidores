@@ -1,0 +1,59 @@
+<?php
+error_reporting(0);
+session_start();
+
+include '../soporte/index-base.php';
+/*
+$zf_Sesion = '{"ZF_Cuenta": "", "ZF_HoraLimite": null, "ZF_HoraIngreso": null, "ZF_Intentos": 0, "ZF_IntentMax": 5, "ZF_Token": null}';
+$objSesion = json_decode($zf_Sesion);
+
+$_SESSION["zf-intentos"] = isset($_SESSION["zf-intentos"]) ? $_SESSION["zf-intentos"] : $objSesion->ZF_Intentos;
+$_SESSION["zf-token"]    = isset($_SESSION["zf-token"]) ? $_SESSION["zf-token"] : $objSesion->ZF_Token;
+$_SESSION["zf-intentmax"]= isset($_SESSION["zf-intentmax"]) ? $_SESSION["zf-intentmax"] : $objSesion->ZF_IntentMax;
+$sw_Login = true;
+*/
+// print "Intentos : " . $_SESSION["zf-intentos"];
+$_SESSION['zf-email'] = isset($_POST["zf_email"]) ? $_POST["zf_email"] : "";
+$_SESSION['zf-password'] = isset($_POST["zf_password"]) ? $_POST["zf_password"] : "";
+
+if($_SESSION['zf-token']==""){
+  $_SESSION["zf-intentos"] = $_SESSION["zf-intentos"]+ 1;
+  if($_SESSION["zf-intentos"] > $_SESSION["zf-intentmax"]) {
+    $_SESSION["zf-intentos"] = $_SESSION["zf-intentmax"];
+    include '../login-bloqueado.php';
+    page_Login($swHidde);
+    die();
+  }
+  
+  $data = array("username" => $_SESSION['zf-email'], "password" => $_SESSION['zf-password']);
+  $data_string = json_encode($data);
+
+  $urlAPI = curl_init('http://191.101.78.67:8088/api/auth/zf_signin');
+  curl_setopt($urlAPI, CURLOPT_CUSTOMREQUEST, "POST");
+  curl_setopt($urlAPI, CURLOPT_POSTFIELDS, $data_string);
+  curl_setopt($urlAPI, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($urlAPI, CURLOPT_HTTPHEADER, array(
+    'Content-Type: application/json',
+    'Content-Length: ' . strlen($data_string))
+  );
+
+  $json_Data = curl_exec($urlAPI);
+  $_SESSION['data'] = $json_Data;
+  $httpcode = curl_getinfo($urlAPI, CURLINFO_HTTP_CODE);
+  curl_close($urlAPI);
+  
+  if($httpcode == 200) {
+    $_SESSION["zf-intentos"] = 0;
+    $jwtToken = json_decode( $json_Data, true );
+    $_SESSION['zf-token'] = $jwtToken;
+    $swHidde = "hidden";
+    header("Location: /distribuidor/planes");
+    die();
+  }
+}
+
+// $httpcode --> 401 Acceso no autorizado, por falta de credenciales
+$swHidde = "hidden";
+header("Location: ../error");
+die();
+?>
